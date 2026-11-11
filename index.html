@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Game Boy Advance Player</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: #121212;
+      color: #f5f5f5;
+      font-family: Arial, sans-serif;
+    }
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 24px 14px;
+    }
+    main {
+      width: min(100%, 960px);
+      text-align: center;
+    }
+    h1 { margin: 8px 0 12px; font-size: 1.5rem; }
+    p { color: #c9c9c9; line-height: 1.45; }
+    .panel {
+      margin: 18px auto;
+      padding: 16px;
+      max-width: 650px;
+      border: 1px solid #333;
+      border-radius: 12px;
+      background: #1c1c1c;
+    }
+    input[type="file"] {
+      display: block;
+      max-width: 100%;
+      margin: 14px auto;
+      color: #eee;
+    }
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 11px 18px;
+      background: #0064ff;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    #status {
+      margin: 12px auto;
+      min-height: 24px;
+      color: #d7e4ff;
+      overflow-wrap: anywhere;
+    }
+    #game-wrap {
+      width: 100%;
+      min-height: 420px;
+      margin: 18px auto 0;
+      background: #000;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    #game {
+      width: 100%;
+      min-height: 420px;
+    }
+    .small { font-size: .9rem; color: #aaa; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Game Boy Advance Player</h1>
+    <div class="panel">
+      <p>Select a GBA game file from your device. The file is loaded in your browser; this page does not upload it to GitHub.</p>
+      <input id="rom-file" type="file" accept=".gba,.zip,application/zip">
+      <button id="start-button" type="button" disabled>Start game</button>
+      <div id="status" role="status" aria-live="polite">Choose a game file to begin.</div>
+      <p class="small">Only select a game file that you have the legal right to use.</p>
+    </div>
+
+    <div id="game-wrap">
+      <div id="game"></div>
+    </div>
+  </main>
+
+  <script>
+    const fileInput = document.getElementById("rom-file");
+    const startButton = document.getElementById("start-button");
+    const statusBox = document.getElementById("status");
+
+    let selectedFile = null;
+    let gameObjectUrl = null;
+    let loaderStarted = false;
+
+    fileInput.addEventListener("change", () => {
+      selectedFile = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+      startButton.disabled = !selectedFile;
+      statusBox.textContent = selectedFile
+        ? `Selected: ${selectedFile.name}. Press Start game.`
+        : "Choose a game file to begin.";
+    });
+
+    startButton.addEventListener("click", () => {
+      if (!selectedFile || loaderStarted) return;
+
+      if (gameObjectUrl) URL.revokeObjectURL(gameObjectUrl);
+      gameObjectUrl = URL.createObjectURL(selectedFile);
+
+      statusBox.textContent = "Loading emulator. This may take a little while...";
+      startButton.disabled = true;
+      loaderStarted = true;
+
+      // EmulatorJS is loaded from its official CDN. The selected game file stays local.
+      window.EJS_player = "#game";
+      window.EJS_core = "gba";
+      window.EJS_gameName = selectedFile.name.replace(/\.[^.]+$/, "");
+      window.EJS_color = "#0064ff";
+      window.EJS_startOnLoaded = true;
+      window.EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
+      window.EJS_gameUrl = gameObjectUrl;
+
+      const loader = document.createElement("script");
+      loader.src = "https://cdn.emulatorjs.org/stable/data/loader.js";
+      loader.onload = () => {
+        statusBox.textContent = "Emulator loaded. If the game does not appear, check whether the school network blocks the emulator CDN.";
+      };
+      loader.onerror = () => {
+        statusBox.textContent = "The emulator script could not load. The network or school filter may be blocking cdn.emulatorjs.org. Try again on a network where this site is permitted.";
+        loaderStarted = false;
+        startButton.disabled = false;
+      };
+      document.body.appendChild(loader);
+    });
+  </script>
+</body>
+</html>
